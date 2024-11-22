@@ -24,9 +24,9 @@ def compute_eigenvalues_for_grids():
         eigenvalues = eigvals(normalized_M)
 
         plt.figure(figsize=(8, 6))
-        plt.scatter(eigenvalues.real, eigenvalues.imag, label=f"m = {m}", marker='o')
-        plt.axhline(0, color='gray', linestyle='--', linewidth=0.5)
-        plt.axvline(0, color='gray', linestyle='--', linewidth=0.5)
+        plt.scatter(eigenvalues.real, eigenvalues.imag, label = f"m = {m}", marker = 'o')
+        plt.axhline(0, color='gray', linestyle = '--', linewidth=0.5)
+        plt.axvline(0, color='gray', linestyle = '--', linewidth=0.5)
         plt.xlabel("Real Part")
         plt.ylabel("Imaginary Part")
         plt.title(f"Eigenvalues of Normalized Matrix (m = {m})")
