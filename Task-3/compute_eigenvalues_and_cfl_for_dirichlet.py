@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 from scipy.linalg import eigvals
 import operators as ops  # Importing the provided SBP operators
 
-def compute_eigenvalues_and_cfl_for_dirichlet():
+
+def compute_eigenvalues_and_cfl_for_dirichlet(option: str):
     """
     Compute eigenvalues and CFL number for the 7th-order SBP operator with Dirichlet BCs.
     """
@@ -31,15 +32,18 @@ def compute_eigenvalues_and_cfl_for_dirichlet():
 
         # Define the boundary operator L
         # Two rows for two boundaries
-        L = np.zeros((2, 2 * m))  
-        L[0, m] = 1  # Left boundary velocity term
-        L[1, 2 * m - 1] = 1  # Right boundary velocity term
+        # L = np.zeros((2, 2 * m))
+        # L[0, m] = 1  # Left boundary velocity term
+        # L[1, 2 * m - 1] = 1  # Right boundary velocity term
+        if option == "Dirichlet":
+            L = np.block([[np.kron(np.array([1, 0]), e_l)], [np.kron(np.array([1, 0]), e_r)]])
+        else:
+            L = np.block([[np.kron(np.array([1, 1]), e_l)], [np.kron(np.array([1, -1]), e_r)]])
 
         # Extend HI to a block diagonal form for the block system
         HI_block = np.block([[HI, np.zeros_like(HI)],
                              [np.zeros_like(HI), HI]])
-
-        # Define the projection matrix P
+        # Define the projection matrix PS
         P = np.eye(2 * m) - HI_block @ L.T @ np.linalg.inv(L @ HI_block @ L.T) @ L
 
         # Compute the matrix M
@@ -69,11 +73,12 @@ def compute_eigenvalues_and_cfl_for_dirichlet():
         plt.axvline(0, color='gray', linestyle='--', linewidth=0.5)
         plt.xlabel("Real Part")
         plt.ylabel("Imaginary Part")
-        plt.title(f"Eigenvalues of Normalized Matrix (Dirichlet, m = {m})")
+        plt.title(f"Eigenvalues of Normalized Matrix ({option}, m = {m})")
         plt.legend()
         plt.grid(True)
-        plt.savefig(f"eigenvalues_dirichlet_7th_order_m_{m}.jpg", format="jpg", dpi=300)
+        plt.savefig(f"eigenvalues_{option}_7th_order_m_{m}.jpg", format="jpg", dpi=300)
         plt.show()
 
 # Run the computation
-compute_eigenvalues_and_cfl_for_dirichlet()
+compute_eigenvalues_and_cfl_for_dirichlet(option="Dirichlet")
+compute_eigenvalues_and_cfl_for_dirichlet(option="Characteristics")
