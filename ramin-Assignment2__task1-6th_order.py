@@ -1,7 +1,10 @@
+from dataclasses import dataclass
+from matplotlib.animation import FuncAnimation
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import eigvals
-import operators as ops
+from scipy.sparse import data
+import sbp.operators as ops
 
 def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
     """
@@ -57,10 +60,12 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
 
     # Initial conditions
     r_star = 0.1
-    p = np.exp(-((x - (-1)) / r_star) ** 2) - np.exp(-((x + 1) / r_star) ** 2)  # Initial pressure
-    v = np.exp(-((x - (-1)) / r_star) ** 2) + np.exp(-((x + 1) / r_star) ** 2)  # Initial velocity
+    # p = np.exp(-((x - (-1)) / r_star) ** 2) - np.exp(-((x + 1) / r_star) ** 2)  # Initial pressure
+    p = np.exp(-x ** 2 / (2 * r_star ** 2))
+    # v = np.exp(-((x - (-1)) / r_star) ** 2) + np.exp(-((x + 1) / r_star) ** 2)  # Initial velocity
+    v = np.zeros_like(p)
 
-    u = np.concatenate([p, v])
+    u0 = np.concatenate([p, v])
 
     # Time integration parameters
     dt = CFL * h / np.max(c)
@@ -68,6 +73,45 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
 
     # Initialize snapshot storage
     snapshots = {}
+
+    def plot_animated_graph(u0):
+        @dataclass
+        class Temp:
+            u: np.ndarray
+
+        u = Temp(u0)
+        fig, ax = plt.subplots()
+        ax.set_ylim(-1, 1)
+        (line,) = ax.plot(x, u.u[:m])
+
+        def update(frame, u: Temp):
+            # RK4 integration steps
+            k1 = dt * M @ u.u
+            k2 = dt * M @ (u.u + 0.5 * k1)
+            k3 = dt * M @ (u.u + 0.5 * k2)
+            k4 = dt * M @ (u.u + k3)
+
+            u.u += (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            line.set_ydata(u.u[:m])
+            ax.set_title(f"t={frame/num_steps:.3f}")
+            if frame >= num_steps - 1:
+                ani.event_source.stop()
+            return (line,)
+
+        ani = FuncAnimation(
+            fig,  # Figure to animate
+            update,
+            fargs=(u,),  # Update function
+            frames=num_steps,  # Number of frames
+            interval=1,  # Delay between frames in milliseconds
+            blit=True
+        )
+        plt.show()
+
+
+    plot_animated_graph(u0)
+
+    u = u0
 
     # Time integration using RK4
     for step in range(num_steps + 1):
@@ -104,7 +148,6 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
     print(f"Grid size m = {m}")
     print(f"Transmission Coefficient (T): {T}")
     print(f"Reflection Coefficient (R): {R}")
-
 
 # Run simulations for m = 201 and m = 401
 wave_equation_with_interface_6th(m=201, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m201")

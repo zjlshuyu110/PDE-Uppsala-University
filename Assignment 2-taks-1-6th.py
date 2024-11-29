@@ -1,5 +1,8 @@
+from dataclasses import dataclass
+from matplotlib.animation import FuncAnimation
 import numpy as np
 import matplotlib.pyplot as plt
+from sbp.operators import sbp_cent_6th
 
 # Set up parameters
 x_l, x_r = -2, 4  # Domain limits
@@ -59,3 +62,35 @@ print(f"Theoretical Transmission Coefficient (T): {T_theory:.3f}")
 print(f"Numerical Transmission Coefficient (T): {T_num:.3f}")
 print(f"Theoretical Reflection Coefficient (R): {R_theory:.3f}")
 print(f"Numerical Reflection Coefficient (R): {R_num:.3f}")
+
+def plot_animated_graph(u, v):
+    fig, ax = plt.subplots()
+    (line,) = ax.plot(x, u)
+
+    @dataclass
+    class ParamsForUpdate:
+        u: np.ndarray
+        v: np.ndarray
+
+    def update(frame, data: ParamsForUpdate):
+        u_new = data.u + dt * data.v
+        v_new = data.v + dt * (c**2) * (D1 @ (D1 @ data.u))
+        data.u, data.v = u_new, v_new
+        line.set_ydata(data.u)
+        ax.set_title(f"t={frame}")
+        if frame >= t_steps - 1:
+            ani.event_source.stop()
+        return (line,)
+
+    uv = ParamsForUpdate(u, v)
+    ani = FuncAnimation(
+        fig,  # Figure to animate
+        update,
+        fargs=(uv,),  # Update function
+        frames=t_steps,  # Number of frames
+        interval=int(t_max / t_steps * 1000),  # Delay between frames in milliseconds
+    )
+    plt.show()
+
+
+plot_animated_graph(u0, v0)
