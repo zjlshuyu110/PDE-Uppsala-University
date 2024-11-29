@@ -38,7 +38,7 @@ def compute_eigenvalues_and_cfl_for_dirichlet(option: str):
         if option == "Dirichlet":
             L = np.block([[np.kron(np.array([1, 0]), e_l)], [np.kron(np.array([1, 0]), e_r)]])
         else:
-            L = np.block([[np.kron(np.array([1, 1]), e_l)], [np.kron(np.array([1, -1]), e_r)]])
+            L = np.block([[np.kron(np.array([1, 0.5]), e_l)], [np.kron(np.array([1, -0.5]), e_r)]])
 
         # Extend HI to a block diagonal form for the block system
         HI_block = np.block([[HI, np.zeros_like(HI)],

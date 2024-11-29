@@ -1,5 +1,9 @@
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from sbp.operators import sbp_cent_6th
+
 
 x_l, x_r = -2, 4  # Domain limits
 m = 201  # Grid points
@@ -15,7 +19,7 @@ R_theory = (Z2 - Z1) / (Z1 + Z2)
 
 r_star = 0.1
 x0 = 0
-u0 = np.exp(-(x - x0) ** 2 / (2 * r_star ** 2))
+u0 = np.exp(-((x - x0) ** 2) / (2 * r_star**2))
 v0 = np.zeros_like(u0)  # Initial velocity
 
 H, HI, D1, D2, e_l, e_r, d1_l, d1_r = sbp_cent_6th(m, h)
@@ -27,15 +31,50 @@ t_steps = int(t_max / dt)
 
 u = u0.copy()
 v = v0.copy()
-for t in range(t_steps):
+
+
+def plot_animated_graph(u, v):
+    fig, ax = plt.subplots()
+    (line,) = ax.plot(x, u)
+
+    @dataclass
+    class ParamsForUpdate:
+        u: np.ndarray
+        v: np.ndarray
+
+    def update(frame, data: ParamsForUpdate):
+        u_new = data.u + dt * data.v
+        v_new = data.v + dt * (c**2) * (D1 @ (D1 @ data.u))
+        data.u, data.v = u_new, v_new
+        line.set_ydata(data.u)
+        ax.set_title(f"t={frame}")
+        if frame >= t_steps - 1:
+            ani.event_source.stop()
+        return (line,)
+
+    uv = ParamsForUpdate(u, v)
+    ani = FuncAnimation(
+        fig,  # Figure to animate
+        update,
+        fargs=(uv,),  # Update function
+        frames=t_steps,  # Number of frames
+        interval=int(t_max / t_steps * 1000),  # Delay between frames in milliseconds
+    )
+    plt.show()
+
+
+plot_animated_graph(u, v)
+
+
+for _ in range(t_steps):
     u_new = u + dt * v
-    v_new = v + dt * (c ** 2) * (D1 @ (D1 @ u))
+    v_new = v + dt * (c**2) * (D1 @ (D1 @ u))
     u, v = u_new, v_new
 
 
 plt.figure(figsize=(10, 6))
 plt.plot(x, u, label="Numerical Solution")
-plt.axvline(1, color='k', linestyle='--', label="Interface at x=1")
+plt.axvline(1, color="k", linestyle="--", label="Interface at x=1")
 plt.title(f"Wave propagation at t={t_max}")
 plt.xlabel("x")
 plt.ylabel("u(x, t)")
