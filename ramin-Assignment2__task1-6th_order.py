@@ -23,7 +23,7 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
 
     # Artificial dissipation parameters
     beta = 0
-    CFL = 0.05  # Based on the assignment_1
+    CFL = 1.6  # Based on the assignment_1
 
     # Generate grid and spacing
     h = (xr - xl) / (m - 1)
@@ -60,10 +60,10 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
 
     # Initial conditions
     r_star = 0.1
-    # p = np.exp(-((x - (-1)) / r_star) ** 2) - np.exp(-((x + 1) / r_star) ** 2)  # Initial pressure
-    p = np.exp(-x ** 2 / (2 * r_star ** 2))
-    # v = np.exp(-((x - (-1)) / r_star) ** 2) + np.exp(-((x + 1) / r_star) ** 2)  # Initial velocity
-    v = np.zeros_like(p)
+    p = np.exp(-((x - 1) / r_star) ** 2) - np.exp(-((x + 1) / r_star) ** 2)  # Initial pressure
+    # p = np.exp(-x ** 2 / (2 * r_star ** 2))
+    v = np.exp(-((x -1) / r_star) ** 2) + np.exp(-((x + 1) / r_star) ** 2)  # Initial velocity
+    # v = np.zeros_like(p)
 
     u0 = np.concatenate([p, v])
 
@@ -71,15 +71,12 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
     dt = CFL * h / np.max(c)
     num_steps = int(t_end / dt)
 
-    # Initialize snapshot storage
-    snapshots = {}
-
     def plot_animated_graph(u0):
         @dataclass
         class Temp:
             u: np.ndarray
 
-        u = Temp(u0)
+        u = Temp(np.copy(u0))
         fig, ax = plt.subplots()
         ax.set_ylim(-1, 1)
         (line,) = ax.plot(x, u.u[:m])
@@ -93,7 +90,7 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
 
             u.u += (k1 + 2 * k2 + 2 * k3 + k4) / 6
             line.set_ydata(u.u[:m])
-            ax.set_title(f"t={frame/num_steps:.3f}")
+            ax.set_title(f"t={(frame + 1)* dt:.3f}")
             if frame >= num_steps - 1:
                 ani.event_source.stop()
             return (line,)
@@ -102,9 +99,8 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
             fig,  # Figure to animate
             update,
             fargs=(u,),  # Update function
-            frames=num_steps,  # Number of frames
-            interval=1,  # Delay between frames in milliseconds
-            blit=True
+            frames=num_steps+1,  # Number of frames
+            interval=int(dt * 1000),  # Delay between frames in milliseconds
         )
         plt.show()
 
@@ -113,19 +109,24 @@ def wave_equation_with_interface_6th(m, t_end, plot_times, filename_suffix):
 
     u = u0
 
-    # Time integration using RK4
-    for step in range(num_steps + 1):
-        current_time = step * dt
-        if any(np.isclose(current_time, plot_times, atol=dt)):
-            snapshots[current_time] = u[:m].copy()  # Save pressure field snapshot
+    def iterate_solver(u):
+        snapshots = {}
+        # Time integration using RK4
+        for step in range(num_steps + 1):
+            current_time = step * dt
+            if any(np.isclose(current_time, plot_times, atol=dt)):
+                snapshots[current_time] = u[:m].copy()  # Save pressure field snapshot
 
-        # RK4 integration steps
-        k1 = dt * M @ u
-        k2 = dt * M @ (u + 0.5 * k1)
-        k3 = dt * M @ (u + 0.5 * k2)
-        k4 = dt * M @ (u + k3)
+            # RK4 integration steps
+            k1 = dt * M @ u
+            k2 = dt * M @ (u + 0.5 * k1)
+            k3 = dt * M @ (u + 0.5 * k2)
+            k4 = dt * M @ (u + k3)
 
-        u += (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            u += (k1 + 2 * k2 + 2 * k3 + k4) / 6
+        return snapshots
+
+    snapshots = iterate_solver(u0)
 
     # Plot snapshots at desired times
     for t, snapshot in snapshots.items():
