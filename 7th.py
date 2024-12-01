@@ -1,3 +1,4 @@
+
 from dataclasses import dataclass
 from matplotlib.animation import FuncAnimation
 import numpy as np
@@ -6,10 +7,16 @@ from scipy.linalg import eigvals
 from scipy.sparse import data
 import sbp.operators as ops
 
+
 def wave_equation_with_interface_7th(m, t_end, plot_times, filename_suffix):
     """
     Solve the 1D wave equation with two materials using 7th-order SBP-Upwind method.
+    Includes animated plotting and snapshot storage.
     """
+    from dataclasses import dataclass
+    from matplotlib.animation import FuncAnimation
+    import matplotlib.pyplot as plt
+
     # Parameters
     xl = -2
     xr = 4
@@ -37,7 +44,7 @@ def wave_equation_with_interface_7th(m, t_end, plot_times, filename_suffix):
     rho = np.where(medium == 1, rho1, rho2)
 
     # Construct the 7th-order SBP operators
-    H, HI, Dp, Dm, e_l, e_r = sbp_upwind_7th(m, h)
+    H, HI, Dp, Dm, e_l, e_r = ops.sbp_upwind_7th(m, h)
 
     # Construct the derivative operator
     D_x = np.block([[np.zeros((m, m)), Dp],
@@ -71,6 +78,44 @@ def wave_equation_with_interface_7th(m, t_end, plot_times, filename_suffix):
 
     # Initialize snapshot storage
     snapshots = {}
+
+    # Function for animated plotting
+    def plot_animated_graph(u0):
+        @dataclass
+        class Temp:
+            u: np.ndarray
+
+        u = Temp(u0)
+        fig, ax = plt.subplots()
+        ax.set_ylim(-1, 1)
+        (line,) = ax.plot(x, u.u[:m])
+
+        def update(frame, u: Temp):
+            # RK4 integration steps
+            k1 = dt * M @ u.u
+            k2 = dt * M @ (u.u + 0.5 * k1)
+            k3 = dt * M @ (u.u + 0.5 * k2)
+            k4 = dt * M @ (u.u + k3)
+
+            u.u += (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            line.set_ydata(u.u[:m])
+            ax.set_title(f"t={frame * dt:.3f}")
+            if frame >= num_steps - 1:
+                ani.event_source.stop()
+            return (line,)
+
+        ani = FuncAnimation(
+            fig,  # Figure to animate
+            update,
+            fargs=(u,),  # Update function
+            frames=num_steps,  # Number of frames
+            interval=1,  # Delay between frames in milliseconds
+            blit=True,
+        )
+        plt.show()
+
+    # Call the animation function
+    plot_animated_graph(u0)
 
     u = u0
 
@@ -109,3 +154,7 @@ def wave_equation_with_interface_7th(m, t_end, plot_times, filename_suffix):
     print(f"Grid size m = {m}")
     print(f"Transmission Coefficient (T): {T}")
     print(f"Reflection Coefficient (R): {R}")
+
+# Run simulations for m = 201 and m = 401
+wave_equation_with_interface_7th(m=201, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m201")
+wave_equation_with_interface_7th(m=401, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m401")
