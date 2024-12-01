@@ -16,18 +16,18 @@ def generate_initial_gaussian_pv(
 
 @dataclass
 class SimulationParams:
-    xl = -1
-    xr = 1
+    xl = -2
+    xr = 4
     x_interface = 1
 
     # Material properties
     c1 = 1
-    c2 = 1
+    c2 = 2
     rho1 = 1
-    rho2 = 1
+    rho2 = 2
 
     beta = 0 # Artificial dissipation parameters
-    CFL = 1.6  # Based on the assignment_1
+    CFL = 1.0  # Based on the assignment_1
 
 PARAMS = SimulationParams()
 
@@ -58,7 +58,7 @@ def wave_equation_with_interface_6th(
     # Construct the inverse SBP operator C
     C_inv = np.block(
         [
-            [np.eye(m) / (rho * c**2), np.zeros((m, m))],
+            [np.eye(m) * (rho * c**2), np.zeros((m, m))],
             [np.zeros((m, m)), np.eye(m) / rho],
         ]
     )
@@ -66,8 +66,8 @@ def wave_equation_with_interface_6th(
     # Construct the L matrix and HI block matrix to compute the projection operator P
     L = np.block(
         [
-            [np.kron(np.array([0, 1]), e_l.toarray())],
-            [np.kron(np.array([0, 1]), e_r.toarray())],
+            [np.kron(np.array([1, 1]), e_l.toarray())],
+            [np.kron(np.array([-1, 4]), e_r.toarray())],
         ]
     )
     HI_block = np.block(
