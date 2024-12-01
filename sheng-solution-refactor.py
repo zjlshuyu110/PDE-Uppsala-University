@@ -9,26 +9,27 @@ from matplotlib.animation import FuncAnimation
 def generate_initial_gaussian_pv(
     x: np.ndarray, t: float, r_star: float
 ) -> tuple[np.ndarray, np.ndarray]:
-    p = np.exp(-(((x - t) / r_star) ** 2)) - np.exp(-(((x + t) / r_star) ** 2))
-    v = np.exp(-(((x - t) / r_star) ** 2)) + np.exp(-(((x + t) / r_star) ** 2))
+    p = np.exp(-(((x - t) / r_star) ** 2)) + np.exp(-(((x + t) / r_star) ** 2))
+    v = np.exp(-(((x - t) / r_star) ** 2)) - np.exp(-(((x + t) / r_star) ** 2))
     return p, v
 
 
 @dataclass
 class SimulationParams:
-    xl = -2
-    xr = 4
+    xl = -1
+    xr = 1
     x_interface = 1
 
     # Material properties
     c1 = 1
-    c2 = 2
+    c2 = 1
     rho1 = 1
-    rho2 = 2
+    rho2 = 1
 
     beta = 0 # Artificial dissipation parameters
     CFL = 1.6  # Based on the assignment_1
 
+PARAMS = SimulationParams()
 
 def wave_equation_with_interface_6th(
     m: int, t_end: float, plot_times: list[float], filename_suffix: str
@@ -36,18 +37,17 @@ def wave_equation_with_interface_6th(
     """
     Solve the 1D wave equation with two materials using 6th-order SBP-Projection method.
     """
-    params = SimulationParams()
 
     # Generate grid and spacing
-    h = (params.xr - params.xl) / (m - 1)
-    x = np.linspace(params.xl, params.xr, m)
+    h = (PARAMS.xr - PARAMS.xl) / (m - 1)
+    x = np.linspace(PARAMS.xl, PARAMS.xr, m)
 
     # Define the material interface
-    medium = np.where(x < params.x_interface, 1, 2)
+    medium = np.where(x < PARAMS.x_interface, 1, 2)
 
     # Define material properties across the grid
-    c = np.where(medium == 1, params.c1, params.c2)
-    rho = np.where(medium == 1, params.rho1, params.rho2)
+    c = np.where(medium == 1, PARAMS.c1, PARAMS.c2)
+    rho = np.where(medium == 1, PARAMS.rho1, PARAMS.rho2)
 
     # Construct the 6th-order SBP operators
     H, HI, D1, D2, e_l, e_r, d1_l, d1_r = ops.sbp_cent_6th(m, h)
@@ -66,8 +66,8 @@ def wave_equation_with_interface_6th(
     # Construct the L matrix and HI block matrix to compute the projection operator P
     L = np.block(
         [
-            [np.kron(np.array([1, 1]), e_l.toarray())],
-            [np.kron(np.array([1, -1]), e_r.toarray())],
+            [np.kron(np.array([0, 1]), e_l.toarray())],
+            [np.kron(np.array([0, 1]), e_r.toarray())],
         ]
     )
     HI_block = np.block(
@@ -87,7 +87,7 @@ def wave_equation_with_interface_6th(
     u0 = np.concatenate([p, v])
 
     # Time integration parameters
-    dt = params.CFL * h / np.max(c)
+    dt = PARAMS.CFL * h / np.max(c)
     num_steps = int(t_end / dt)
 
     def plot_animated_graph(u0):
@@ -97,8 +97,8 @@ def wave_equation_with_interface_6th(
 
         u = Temp(np.copy(u0))
         fig, ax = plt.subplots()
-        ax.set_ylim(bottom=-1.1, top=1.1)
-        ax.axvline(params.x_interface, color="k", linestyle="--", label="Interface")
+        ax.set_ylim(bottom=-1.1, top=2)
+        ax.axvline(PARAMS.x_interface, color="k", linestyle="--", label="Interface")
         ax.set_xlabel("x")
         ax.set_ylabel("Amplitude")
         ax.legend()
@@ -156,7 +156,7 @@ def wave_equation_with_interface_6th(
         plt.figure(figsize=(8, 6))
         plt.plot(x, snapshot, label=f"Pressure at t = {t:.2f}")
         plt.ylim(bottom=-1.1, top=1.1)
-        plt.axvline(x_interface, color="k", linestyle="--", label="Interface")
+        plt.axvline(PARAMS.x_interface, color="k", linestyle="--", label="Interface")
         plt.title(f"Wave Propagation at t = {t:.2f}, m = {m} (6th Order)")
         plt.xlabel("x")
         plt.ylabel("Amplitude")
@@ -165,20 +165,30 @@ def wave_equation_with_interface_6th(
         plt.savefig(f"wave_6th_order_{filename_suffix}_t_{t:.2f}.png", dpi=300)
         plt.show()
 
-    # Calculate and print transmission and reflection coefficients
-    Z1 = rho1 * c1  # Impedance
-    Z2 = rho2 * c2
-    T = 2 * Z2 / (Z1 + Z2)
-    R = (Z2 - Z1) / (Z1 + Z2)
-    print(f"Grid size m = {m}")
-    print(f"Transmission Coefficient (T): {T}")
-    print(f"Reflection Coefficient (R): {R}")
+        left_region = x < PARAMS.x_interface
+        right_region = x >= PARAMS.x_interface
+
+        # Incident, reflected, and transmitted waves
+        reflected_wave = snapshot[left_region]  # Same region, post-interaction
+        transmitted_wave = snapshot[right_region]
+
+        # Measure amplitudes
+        A_i = 1
+        A_r = np.max(np.abs(reflected_wave))
+        A_t = np.max(np.abs(transmitted_wave))
+
+        # Numerical reflection and transmission coefficients
+        R_num = A_r / A_i
+        T_num = A_t / A_i
+
+    print(f"Reflection Coefficient (Numerical): {R_num:.4f}")
+    print(f"Transmission Coefficient (Numerical): {T_num:.4f}")
 
 
-# Run simulations for m = 201 and m = 401
+# # Run simulations for m = 201 and m = 401
+# wave_equation_with_interface_6th(
+#     m=201, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m201"
+# )
 wave_equation_with_interface_6th(
-    m=201, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m201"
-)
-wave_equation_with_interface_6th(
-    m=401, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m401"
+    m=601, t_end=2.5, plot_times=[1.8, 2.5], filename_suffix="m401"
 )
