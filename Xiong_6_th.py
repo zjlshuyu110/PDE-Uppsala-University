@@ -14,6 +14,7 @@ def generate_initial_gaussian_pv(
     return p, v
 
 
+
 @dataclass
 class SimulationParams:
     xl = -2
@@ -138,7 +139,7 @@ def wave_equation_with_interface_6th(
         for step in range(num_steps + 1):
             current_time = step * dt
             if any(np.isclose(current_time, plot_times, atol=dt)):
-                snapshots[current_time] = u[:m].copy()  # Save pressure field snapshot
+                snapshots[current_time] = u[:].copy()  # Save pressure field snapshot
 
             # RK4 integration steps
             k1 = dt * M @ u
@@ -155,8 +156,9 @@ def wave_equation_with_interface_6th(
     # Plot snapshots at desired times and calculate coefficients
     for t, snapshot in snapshots.items():
         plt.figure(figsize=(8, 6))
-        plt.plot(x, snapshot, label=f"Pressure at t = {t:.2f}")
-        plt.ylim(bottom=-1.1, top=1.1)
+        plt.plot(x, snapshot[:m], label=f"Pressure at t = {t:.2f}")
+        plt.plot(x, snapshot[m:], label=f"Velocity at t = {t:.2f}")
+        plt.ylim(bottom=-1.1, top=2)
         plt.axvline(PARAMS.x_interface, color="k", linestyle="--", label="Interface")
         plt.title(f"Wave Propagation at t = {t:.2f}, m = {m} (6th Order)")
         plt.xlabel("x")
@@ -170,8 +172,8 @@ def wave_equation_with_interface_6th(
         right_region = x >= PARAMS.x_interface
 
         # Incident, reflected, and transmitted waves
-        reflected_wave = snapshot[left_region]  # Same region, post-interaction
-        transmitted_wave = snapshot[right_region]
+        reflected_wave = snapshot[:m][left_region]  # Same region, post-interaction
+        transmitted_wave = snapshot[:m][right_region]
 
         # Measure amplitudes
         A_i = 1  # Incident wave amplitude (assuming normalized)
@@ -193,5 +195,5 @@ def wave_equation_with_interface_6th(
 #     m=201, t_end=2.5, plot_times=[1.5, 2.5], filename_suffix="m201"
 # )
 wave_equation_with_interface_6th(
-    m=601, t_end=2.5, plot_times=[1.8, 2.5], filename_suffix="m401"
+    m=401, t_end=2.5, plot_times=[1.8, 2.5], filename_suffix="m401"
 )
