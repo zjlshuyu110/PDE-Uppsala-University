@@ -2,61 +2,79 @@ import numpy as np
 import pandas as pd
 import operators as ops
 
+
+def generate_initial_gaussian_pv(
+    x: np.ndarray, t: float, r_star: float
+) -> tuple[np.ndarray, np.ndarray]:
+    p = np.exp(-(((x - t) / r_star) ** 2)) + np.exp(-(((x + t) / r_star) ** 2))
+    v = np.exp(-(((x - t) / r_star) ** 2)) - np.exp(-(((x + t) / r_star) ** 2))
+    return p, v
+
 def compute_numerical_solution_6th(m, t_star, cfl = 0.05, r_star = 0.1):
-    
     # Define domain and initial conditions
     x_l = -1
     x_r = 1
 
     c = 1
     h = (x_r - x_l) / (m - 1)
-    k = cfl * h
-    
+
+    rho = 1
+
+    dt = 0.05 * h / np.max(c)
+
     x = np.linspace(x_l, x_r, m)
 
     # Define SBP operator
     H, HI, D1, D2, e_l, e_r, d1_l, d1_r = ops.sbp_cent_6th(m, h)
-    Dx = D1 
+    Dx = D1
 
-    theta_1 = np.exp(-(x - 0)**2 / r_star)
-    theta_2 = -np.exp(-(x + 0)**2 / r_star)
+    p, v = generate_initial_gaussian_pv(x, t=0, r_star=0.1)
 
-    p_exact = theta_1 - theta_2
-    v_exact = theta_1 + theta_2
+    u = np.concatenate([p, v])
+    D_x = np.block([[np.zeros((m, m)), D1.toarray()], [D1.toarray(), np.zeros((m, m))]])
+    # Construct the inverse SBP operator C
+    C_inv = np.block(
+        [
+            [np.eye(m) * (rho * c**2), np.zeros((m, m))],
+            [np.zeros((m, m)), np.eye(m) / rho],
+        ]
+    )
+    L = np.block(
+        [
+            [np.kron(np.array([1, 0]), e_l.toarray())],
+            [np.kron(np.array([1, 0]), e_r.toarray())],
+        ]
+    )
+    HI_block = np.block(
+        [
+            [HI.toarray(), np.zeros_like(HI.toarray())],
+            [np.zeros_like(HI.toarray()), HI.toarray()],
+        ]
+    )
 
-    p_numerical = p_exact.copy()
-    v_numerical = v_exact.copy()
+    P = np.eye(2 * m) - HI_block @ L.T @ np.linalg.inv(L @ HI_block @ L.T) @ L
+    M = -P @ C_inv @ D_x @ P
 
     # Time-stepping using RK4
     t = 0
     while t < t_star:
-        if t + k > t_star:
+        if t + dt > t_star:
             k = t_star - t
+        k1 = dt * M @ u
+        k2 = dt * M @ (u + 0.5 * k1)
+        k3 = dt * M @ (u + 0.5 * k2)
+        k4 = dt * M @ (u + k3)
 
-        # RK4 steps for pressure and velocity
-        k1_p = -c * Dx @ v_numerical
-        k1_v = -c * Dx @ p_numerical
+        u += (k1 + 2 * k2 + 2 * k3 + k4) / 6
 
-        k2_p = -c * Dx @ (v_numerical + 0.5 * k * k1_v)
-        k2_v = -c * Dx @ (p_numerical + 0.5 * k * k1_p)
+        t += dt
 
-        k3_p = -c * Dx @ (v_numerical + 0.5 * k * k2_v)
-        k3_v = -c * Dx @ (p_numerical + 0.5 * k * k2_p)
-
-        k4_p = -c * Dx @ (v_numerical + k * k3_v)
-        k4_v = -c * Dx @ (p_numerical + k * k3_p)
-
-        # Update pressure and velocity
-        p_numerical += (k / 6) * (k1_p + 2 * k2_p + 2 * k3_p + k4_p)
-        v_numerical += (k / 6) * (k1_v + 2 * k2_v + 2 * k3_v + k4_v)
-
-        t += k
-
-    return x, p_numerical, v_numerical
+    return x, u[:m], u[m:]
 
 
 def compute_and_save_numerical_solutions_6th():
-    grids = [101, 201, 401, 601, 801]
+    grids = [101, 201, 401]
+    # grids = [101, 201, 401, 601, 801]
     t_star = 1.8
 
     for m in grids:

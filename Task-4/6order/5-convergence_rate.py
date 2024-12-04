@@ -3,8 +3,9 @@ import pandas as pd
 
 def compute_convergence_rate():
 
-    grid_sizes = [101, 201, 401, 601, 801]
-    l2_norm_errors = [0.357200, 0.220653, 0.130770, 0.133153, 0.151892]
+    df = pd.read_csv("error_analysis.csv")
+    grid_sizes = df["Grid Size (m)"]
+    l2_norm_errors = df["L2-Norm of Error"]
 
     convergence_rates = []
 

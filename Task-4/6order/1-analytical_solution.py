@@ -19,7 +19,8 @@ def compute_and_save_analytic_solutions():
     t_star = 2.5
     r_star = 0.1
 
-    grid_sizes = [101, 201, 401, 601, 801]
+    # grid_sizes = [101, 201, 401, 601, 801]
+    grid_sizes = [101, 201, 401]
 
     for m in grid_sizes:
 
