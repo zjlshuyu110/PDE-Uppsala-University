@@ -4,17 +4,14 @@ import pandas as pd
 def compute_errors_and_l2_norm():
 
     grids = [101, 201, 401, 601, 801]
-
     t_star = 1.8 
     r_star = 0.1 
-    x_l = -1
-    x_r = 1 
+    x_l, x_r = -1, 1
     
     errors = []
     l2_norms = []
 
     for m in grids:
-
         analytic_filename = f"analytic_solution_m_{m}.csv"
         analytic_df = pd.read_csv(analytic_filename)
         p_analytic = analytic_df["Pressure (p)"].values
@@ -38,4 +35,5 @@ def compute_errors_and_l2_norm():
     print("Error analysis saved to error_analysis.csv")
     print(results_df)
 
+# Execute the error computation
 compute_errors_and_l2_norm()
