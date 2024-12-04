@@ -27,7 +27,7 @@ def compute_eigenvalues_and_cfl_for_dirichlet(option: str):
                         [D_minus, np.zeros((m, m))]])
 
         # Construct the inverse of the SBP operator C
-        C_inv = np.block([[np.eye(m) / (rho * c**2), np.zeros((m, m))],
+        C_inv = np.block([[np.eye(m) * (rho * c**2), np.zeros((m, m))],
                           [np.zeros((m, m)), np.eye(m) / rho]])
 
         # Define the boundary operator L
