@@ -125,7 +125,8 @@ def wave_equation_with_composite_wall(
     for step in range(num_steps + 1):
         current_time = step * dt
         if any(np.isclose(current_time, plot_times, atol=dt)):
-            snapshots[current_time] = u[:m].copy()  # Save pressure field snapshot
+            snapshots[current_time] = u[:].copy()  # Save pressure field snapshot
+
 
         # RK4 integration steps
         k1 = dt * (M @ u)
@@ -138,7 +139,8 @@ def wave_equation_with_composite_wall(
     # Plot snapshots at desired times
     for t, snapshot in snapshots.items():
         plt.figure(figsize=(12, 6))
-        plt.plot(x, snapshot, label=f"Pressure at t = {t:.2f}")
+        plt.plot(x, snapshot[:m], label=f"Pressure at t = {t:.2f}")
+        plt.plot(x, snapshot[m:], label=f"Velocity at t = {t:.2f}")
         plt.axvspan(board1_start, board1_end, color='grey', alpha=0.3, label='Board')
         plt.axvspan(board2_start, board2_end, color='grey', alpha=0.3)
         plt.title(f"Wave Propagation at t = {t:.2f}, m = {m} ({order_str})")
