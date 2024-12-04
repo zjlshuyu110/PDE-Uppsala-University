@@ -16,28 +16,29 @@ def compute_and_save_analytic_solutions():
 
     x_l = -1
     x_r = 1
-    t_star = 2.5
+    L = x_r - x_l
+    t_star = 1.8
     r_star = 0.1
-
-    # grid_sizes = [101, 201, 401, 601, 801]
-    grid_sizes = [101, 201, 401]
+    grid_sizes = [101, 201, 401, 601, 801]
 
     for m in grid_sizes:
-
         x = np.linspace(x_l, x_r, m)
 
-        p_exact, v_exact = analytic_solution(x, (x_r - x_l) - t_star, r_star)
+        p_exact, v_exact = analytic_solution(x, L - t_star, r_star)
 
-        data = {"x" : x,
-                "Pressure (p)" : p_exact,
-                "Velocity (v)" : v_exact}
-
-        plt.plot(x, p_exact)
-        plt.show()
-
+        data = {"x" : x, "Pressure (p)" : p_exact, "Velocity (v)" : v_exact}
         df = pd.DataFrame(data)
-
         output_filename = f"analytic_solution_m_{m}.csv"
         df.to_csv(output_filename, index=False)
+
+        # Plotting the pressure
+        plt.figure()
+        plt.plot(x, p_exact, label = "Pressure (p)")
+        plt.title(f"Analytical Solution (m = {m})")
+        plt.xlabel("x")
+        plt.ylabel("Pressure")
+        plt.legend()
+        plt.grid()
+        plt.show()
 
 compute_and_save_analytic_solutions()
