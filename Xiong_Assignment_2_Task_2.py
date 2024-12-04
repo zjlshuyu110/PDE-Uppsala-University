@@ -69,15 +69,19 @@ def wave_equation_with_composite_wall(
     # Construct the SBP operators
     if order == 6:
         H, HI, D1, D2, e_l, e_r, d1_l, d1_r = ops.sbp_cent_6th(m, h)
+        D_x = np.block([[np.zeros((m, m)), D1.toarray()], [D1.toarray(), np.zeros((m, m))]])
         order_str = "6th Order"
+        e_l = e_l.toarray()
+        e_r = e_r.toarray()
+        HI = HI.toarray()
     elif order == 7:
-        H, HI, D1, D2, e_l, e_r, d1_l, d1_r = ops.sbp_cent_7th(m, h)
+        H, HI, Dp, Dm, e_l, e_r = ops.sbp_upwind_7th(m, h)
+
+        # Construct the derivative operator using upwind scheme
+        D_x = np.block([[np.zeros((m, m)), Dp], [Dm, np.zeros((m, m))]])
         order_str = "7th Order"
     else:
         raise ValueError("Unsupported order. Choose 6 or 7.")
-
-    # Construct the derivative operator
-    D_x = np.block([[np.zeros((m, m)), D1.toarray()], [D1.toarray(), np.zeros((m, m))]])
 
     # Construct the inverse SBP operator C (including damping)
     C_inv = np.block([
@@ -95,21 +99,21 @@ def wave_equation_with_composite_wall(
     # Construct the L matrix and HI block matrix to compute the projection operator P
     L = np.block(
         [
-            [np.kron(np.array([1, 1]), e_l.toarray())],
-            [np.kron(np.array([1, -1]), e_r.toarray())],
+            [np.kron(np.array([1, 1]), e_l)],
+            [np.kron(np.array([1, -1]), e_r)],
         ]
     )
     HI_block = np.block(
         [
-            [HI.toarray(), np.zeros_like(HI.toarray())],
-            [np.zeros_like(HI.toarray()), HI.toarray()],
+            [HI, np.zeros_like(HI)],
+            [np.zeros_like(HI), HI],
         ]
     )
 
     P = np.eye(2 * m) - HI_block @ L.T @ np.linalg.inv(L @ HI_block @ L.T) @ L
 
     # Compute the system matrix M including damping
-    M = -P @ C_inv @ (D_x + Beta_block) @ P 
+    M = -P @ C_inv @ (D_x + Beta_block) @ P
 
     # Generate initial conditions
     p, v = generate_initial_gaussian_pv(x, t=0, r_star=0.1)
@@ -161,9 +165,9 @@ wave_equation_with_composite_wall(
 )
 
 # Uncomment below to run with 7th order operator if available
-# wave_equation_with_composite_wall(
-#     m=1001, t_end=5.0, plot_times=[5.0], filename_suffix="test1_no_damping_order7", beta2_value=0, order=7
-# )
+wave_equation_with_composite_wall(
+    m=1001, t_end=5.0, plot_times=[5.0], filename_suffix="test1_no_damping_order7", beta2_value=0, order=7
+)
 
 # Test 2: With Damping in Boards (beta1 = 0, beta2 = 10)
 print("Running Test 2: With Damping in Boards")
@@ -172,6 +176,6 @@ wave_equation_with_composite_wall(
 )
 
 # Uncomment below to run with 7th order operator if available
-# wave_equation_with_composite_wall(
-#     m=1001, t_end=5.0, plot_times=[5.0], filename_suffix="test2_with_damping_order7", beta2_value=10, order=7
-# )
+wave_equation_with_composite_wall(
+    m=1001, t_end=5.0, plot_times=[5.0], filename_suffix="test2_with_damping_order7", beta2_value=10, order=7
+)
